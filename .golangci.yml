@@ -1,0 +1,39 @@
+version: "2"
+
+linters:
+  enable:
+    - staticcheck   # Статический анализ
+    - gocyclo       # Цикломатическая сложность
+    - gocognit      # Когнитивная сложность
+    - misspell      # Проверка орфографии
+    - goconst       # Проверка констант
+
+  settings:
+    gocognit:
+      # Minimal code complexity to report.
+      # Default: 30 (but we recommend 10-20)
+      min-complexity: 20
+    gocyclo:
+      # Minimal code complexity to report.
+      # Default: 30 (but we recommend 10-20)
+      min-complexity: 10
+
+  exclusions:
+    rules:
+    - linters:
+        - staticcheck
+      # Incorrectly formatted error string.
+      # https://staticcheck.dev/docs/checks/#ST1005
+      text: "ST1005"
+
+formatters:
+  enable:
+    - goimports
+    - golines
+    - gofmt
+
+  settings:
+    golines:
+      # Target maximum line length.
+      # Default: 100
+      max-len: 120

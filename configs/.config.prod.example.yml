@@ -1,0 +1,31 @@
+app:
+  port: :8080
+  timeout:
+    request: 10s
+    graceful: 30s
+
+  jwt:
+    access:
+      exp: 30m
+      secret: ryurtuyggjguhuiyih
+    refresh:
+      exp: 24h
+      secret: kljslkjdkjskjksjl
+
+db:
+  host: db_prod
+  port: 5432
+  name: postgres
+  user: postgres
+  password: qwerty
+
+  pool:
+    max_conns: 10
+    min_conns: 5
+    max_conn_lifetime: 1h30m
+    max_conn_idletime: 10m
+
+redis:
+  host: redis_prod
+  port: 6379
+  password: qwerty
