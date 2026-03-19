@@ -1,9 +1,16 @@
 package auth
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+)
+
+var (
+	ErrInvalidToken = errors.New("Invalid token")
+	ErrWrongType    = errors.New("Wrong token type")
 )
 
 type JWTHelper struct {
@@ -48,4 +55,68 @@ func (hp *JWTHelper) CreateRefreshToken(username string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (hp *JWTHelper) ValidateAccessToken(tokenStr string) (string, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(hp.accessSecret), nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if !token.Valid {
+		return "", ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", ErrInvalidToken
+	}
+
+	if claims["typ"] != "access" {
+		return "", ErrWrongType
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok || sub == "" {
+		return "", ErrInvalidToken
+	}
+
+	return sub, nil
+}
+
+func (hp *JWTHelper) ValidateRefreshToken(tokenStr string) (string, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(hp.refreshSecret), nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if !token.Valid {
+		return "", ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", ErrInvalidToken
+	}
+
+	if claims["typ"] != "refresh" {
+		return "", ErrWrongType
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok || sub == "" {
+		return "", ErrInvalidToken
+	}
+
+	return sub, nil
 }

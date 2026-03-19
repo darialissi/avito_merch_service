@@ -7,8 +7,8 @@ import (
 	"github.com/darialissi/avito_merch_service/internal/schemas/dto"
 	"github.com/darialissi/avito_merch_service/lib/postgres"
 	"github.com/google/uuid"
-	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
 )
 
@@ -40,12 +40,6 @@ func (r *AuthRepository) SaveUser(ctx context.Context, data *dto.UserForm) (*mod
 		return nil, err
 	}
 
-	if pgErr, ok := err.(*pgconn.PgError); ok {
-		if pgErr.Code == "23505" {
-			return nil, ErrUniqueConflict
-		}
-	}
-
 	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -54,6 +48,9 @@ func (r *AuthRepository) SaveUser(ctx context.Context, data *dto.UserForm) (*mod
 
 	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
 	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+			return nil, ErrUniqueConflict
+		}
 		return nil, err
 	}
 

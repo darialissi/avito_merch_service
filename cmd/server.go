@@ -15,6 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	ctrl "github.com/darialissi/avito_merch_service/internal/controllers/http"
+	mw "github.com/darialissi/avito_merch_service/internal/middleware"
 	auth_repo "github.com/darialissi/avito_merch_service/internal/repositories/auth"
 	shop_repo "github.com/darialissi/avito_merch_service/internal/repositories/shop"
 	token_storage "github.com/darialissi/avito_merch_service/internal/repositories/token"
@@ -74,9 +75,12 @@ func main() {
 	r := chi.NewRouter()
 
 	// Define middleware
-	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
+	r.Use(middleware.CleanPath)
+	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
+
+	authMw := mw.NewAuthMiddleware(TokenHelper, TokenStorage)
 
 	requestTimeout, _ := time.ParseDuration(cfg.App.Timeout.Request)
 	r.Use(middleware.Timeout(requestTimeout))
@@ -85,9 +89,13 @@ func main() {
 		r.Post("/register", AuthHandler.RegisterUser)
 		r.Post("/auth", AuthHandler.AuthUser)
 
-		r.Get("/info", ShopHandler.Info)
-		r.Get("/buy/{item}", ShopHandler.BuyItem)
-		r.Post("/sendCoin", ShopHandler.SendCoin)
+		r.Group(func(r chi.Router) { // группа защищенных роутов
+			r.Use(authMw.RequireAuth)
+
+			r.Get("/info", ShopHandler.Info)
+			r.Get("/buy/{item}", ShopHandler.BuyItem)
+			r.Post("/sendCoin", ShopHandler.SendCoin)
+		})
 	})
 
 	// Run server and shutdown gracefully
