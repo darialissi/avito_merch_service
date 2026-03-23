@@ -68,7 +68,7 @@ func main() {
 	AuthHandler := ctrl.NewAuthHandler(AuthUsecase)
 
 	ShopRepository := shop_repo.NewShopRepository(txMngr)
-	ShopUsecase := uc.NewShopUsecase(ShopRepository)
+	ShopUsecase := uc.NewShopUsecase(ShopRepository, txMngr)
 	ShopHandler := ctrl.NewShopHandler(ShopUsecase)
 
 	// Register handlers
@@ -93,7 +93,7 @@ func main() {
 			r.Use(authMw.RequireAuth)
 
 			r.Get("/info", ShopHandler.Info)
-			r.Get("/buy/{item}", ShopHandler.BuyItem)
+			r.Post("/buy/{item}", ShopHandler.BuyItem)
 			r.Post("/sendCoin", ShopHandler.SendCoin)
 		})
 	})

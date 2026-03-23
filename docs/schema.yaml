@@ -9,10 +9,18 @@ servers:
 security:
   - BearerAuth: []
 
+tags:
+  - name: auth
+    description: Регистрация / Aутентификация
+  - name: shop
+    description: Покупки / Tранзакции
+
 paths:
   /api/info:
     get:
-      summary: Получить информацию о монетах, инвентаре и истории транзакций.
+      tags:
+        - shop
+      summary: Получение информации о монетах, инвентаре и истории транзакций.
       security:
         - BearerAuth: []
       responses:
@@ -43,7 +51,9 @@ paths:
 
   /api/sendCoin:
     post:
-      summary: Отправить монеты другому пользователю.
+      tags:
+        - shop
+      summary: Отправление монет другому пользователю.
       security:
         - BearerAuth: []
       requestBody:
@@ -75,8 +85,10 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /api/buy/{item}:
-    get:
-      summary: Купить предмет за монеты.
+    post:
+      tags:
+        - shop
+      summary: Покупка предмета за монеты.
       security:
         - BearerAuth: []
       parameters:
@@ -85,6 +97,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuyItemRequest'
       responses:
         '200':
           description: Успешный ответ.
@@ -107,9 +125,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/register:
+    post:
+      tags:
+        - auth
+      summary: Регистрация нового пользователя.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Успешная регистрация.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Неверный запрос.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/auth:
     post:
-      summary: Аутентификация и получение JWT-токена. При первой аутентификации пользователь создается автоматически. 
+      tags:
+        - auth
+      summary: Аутентификация и получение JWT-токенов.
       requestBody:
         required: true
         content:
@@ -125,12 +176,6 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '400':
           description: Неверный запрос.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Неавторизован.
           content:
             application/json:
               schema:
@@ -217,9 +262,29 @@ components:
     AuthResponse:
       type: object
       properties:
-        token:
+        access_token:
           type: string
           description: JWT-токен для доступа к защищенным ресурсам.
+        refresh_token:
+          type: string
+          description: JWT-токен для обновления токенов.
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID пользователя.
+        username:
+          type: string
+          description: Имя пользователя.
+        coins:
+          type: integer
+          description: Количество монет у пользователя.
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата и время создания пользователя.
 
     SendCoinRequest:
       type: object
@@ -233,3 +298,12 @@ components:
       required:
         - toUser
         - amount
+
+    BuyItemRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          description: Количество предметов для покупки.
+      required:
+        - quantity

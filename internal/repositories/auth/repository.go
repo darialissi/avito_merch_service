@@ -46,7 +46,7 @@ func (r *AuthRepository) SaveUser(ctx context.Context, data *dto.UserForm) (*mod
 	}
 	defer rows.Close()
 
-	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
+	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.User])
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
 			return nil, ErrUniqueConflict
@@ -74,7 +74,7 @@ func (r *AuthRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*models
 	}
 	defer rows.Close()
 
-	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
+	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.User])
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (r *AuthRepository) GetUserByUsername(ctx context.Context, username string)
 	}
 	defer rows.Close()
 
-	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
+	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.User])
 	if err != nil {
 		return nil, err
 	}

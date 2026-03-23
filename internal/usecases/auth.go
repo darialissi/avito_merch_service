@@ -60,6 +60,7 @@ func (ac *AuthUsecase) SignIn(ctx context.Context, form *dto.AuthForm) (*dto.Use
 	response := &dto.UserResponse{
 		ID:        saved.ID,
 		Username:  saved.Username,
+		Coins:     saved.Coins,
 		CreatedAt: saved.CreatedAt,
 	}
 
@@ -86,12 +87,12 @@ func (ac *AuthUsecase) LogIn(ctx context.Context, form *dto.AuthForm) (*dto.Auth
 	}
 
 	// 3. Сгенерировать токены авторизации.
-	access, err := ac.jwtHelper.CreateAccessToken(form.Username)
+	access, err := ac.jwtHelper.CreateAccessToken(form.Username, user.ID.String())
 	if err != nil {
 		return nil, fmt.Errorf("CreateAccessToken error: %w", err)
 	}
 
-	refresh, err := ac.jwtHelper.CreateRefreshToken(form.Username)
+	refresh, err := ac.jwtHelper.CreateRefreshToken(form.Username, user.ID.String())
 	if err != nil {
 		return nil, fmt.Errorf("CreateRefreshToken error: %w", err)
 	}

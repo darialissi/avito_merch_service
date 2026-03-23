@@ -2,16 +2,13 @@ package middleware
 
 import (
 	"context"
+	"github.com/darialissi/avito_merch_service/internal/contextkeys"
 	"github.com/darialissi/avito_merch_service/internal/repositories/token"
 	"github.com/darialissi/avito_merch_service/internal/schemas/dto"
 	utils "github.com/darialissi/avito_merch_service/internal/utils/auth"
 	"net/http"
 	"strings"
 )
-
-type contextKey string
-
-const authUserKey contextKey = "auth_username"
 
 var (
 	ErrUserNotAuthenticated = "User is not authenticated"
@@ -38,9 +35,10 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		// Если валиден, просто пропускаем запрос дальше.
-		username, err := m.jwtHelper.ValidateAccessToken(accessToken)
-		if err == nil && username != "" {
-			ctx := context.WithValue(r.Context(), authUserKey, username)
+		username, userID, err := m.jwtHelper.ValidateAccessToken(accessToken)
+		if err == nil && username != "" && userID != "" {
+			ctx := context.WithValue(r.Context(), contextkeys.UserKey, username)
+			ctx = context.WithValue(ctx, contextkeys.UserIDKey, userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
@@ -52,8 +50,8 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		username, err = m.jwtHelper.ValidateRefreshToken(refreshToken)
-		if err != nil || username == "" {
+		username, userID, err = m.jwtHelper.ValidateRefreshToken(refreshToken)
+		if err != nil || username == "" || userID == "" {
 			http.Error(w, ErrUserNotAuthenticated, http.StatusUnauthorized)
 			return
 		}
@@ -70,13 +68,13 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		// 3. Генерируем новую пару токенов.
-		newAccessToken, err := m.jwtHelper.CreateAccessToken(username)
+		newAccessToken, err := m.jwtHelper.CreateAccessToken(username, userID)
 		if err != nil {
 			http.Error(w, ErrUserNotAuthenticated, http.StatusUnauthorized)
 			return
 		}
 
-		newRefreshToken, err := m.jwtHelper.CreateRefreshToken(username)
+		newRefreshToken, err := m.jwtHelper.CreateRefreshToken(username, userID)
 		if err != nil {
 			http.Error(w, ErrUserNotAuthenticated, http.StatusUnauthorized)
 			return
@@ -95,7 +93,9 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		w.Header().Set("Authorization", "Bearer "+newAccessToken)
 		w.Header().Set("X-Refresh-Token", newRefreshToken)
 
-		ctx := context.WithValue(r.Context(), authUserKey, username)
+		ctx := context.WithValue(r.Context(), contextkeys.UserKey, username)
+		ctx = context.WithValue(ctx, contextkeys.UserIDKey, userID)
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

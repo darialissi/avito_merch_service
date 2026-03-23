@@ -29,24 +29,26 @@ func NewJWTHelper(accessSecret, refreshSecret string, accessExp, refreshExp time
 	}
 }
 
-func (hp *JWTHelper) CreateAccessToken(username string) (string, error) {
+func (hp *JWTHelper) CreateAccessToken(username string, userID string) (string, error) {
 	claims := jwt.MapClaims{
-		"sub": username,
-		"exp": time.Now().Add(hp.accessExp).Unix(),
-		"iat": time.Now().Unix(),
-		"typ": "access",
+		"sub":    username,
+		"userId": userID,
+		"exp":    time.Now().Add(hp.accessExp).Unix(),
+		"iat":    time.Now().Unix(),
+		"typ":    "access",
 	}
 
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(hp.accessSecret))
 }
 
-func (hp *JWTHelper) CreateRefreshToken(username string) (string, error) {
+func (hp *JWTHelper) CreateRefreshToken(username string, userID string) (string, error) {
 
 	claims := jwt.MapClaims{
-		"sub": username,
-		"exp": time.Now().Add(hp.refreshExp).Unix(),
-		"iat": time.Now().Unix(),
-		"typ": "refresh",
+		"sub":    username,
+		"userId": userID,
+		"exp":    time.Now().Add(hp.refreshExp).Unix(),
+		"iat":    time.Now().Unix(),
+		"typ":    "refresh",
 	}
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(hp.refreshSecret))
@@ -57,7 +59,7 @@ func (hp *JWTHelper) CreateRefreshToken(username string) (string, error) {
 	return token, nil
 }
 
-func (hp *JWTHelper) ValidateAccessToken(tokenStr string) (string, error) {
+func (hp *JWTHelper) ValidateAccessToken(tokenStr string) (string, string, error) {
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -65,31 +67,36 @@ func (hp *JWTHelper) ValidateAccessToken(tokenStr string) (string, error) {
 		return []byte(hp.accessSecret), nil
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if !token.Valid {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
 
 	if claims["typ"] != "access" {
-		return "", ErrWrongType
+		return "", "", ErrWrongType
 	}
 
 	sub, ok := claims["sub"].(string)
 	if !ok || sub == "" {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
 
-	return sub, nil
+	userID, ok := claims["userId"].(string)
+	if !ok || userID == "" {
+		return "", "", ErrInvalidToken
+	}
+
+	return sub, userID, nil
 }
 
-func (hp *JWTHelper) ValidateRefreshToken(tokenStr string) (string, error) {
+func (hp *JWTHelper) ValidateRefreshToken(tokenStr string) (string, string, error) {
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -97,26 +104,31 @@ func (hp *JWTHelper) ValidateRefreshToken(tokenStr string) (string, error) {
 		return []byte(hp.refreshSecret), nil
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if !token.Valid {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
 
 	if claims["typ"] != "refresh" {
-		return "", ErrWrongType
+		return "", "", ErrWrongType
 	}
 
 	sub, ok := claims["sub"].(string)
 	if !ok || sub == "" {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
 
-	return sub, nil
+	userID, ok := claims["userId"].(string)
+	if !ok || userID == "" {
+		return "", "", ErrInvalidToken
+	}
+
+	return sub, userID, nil
 }

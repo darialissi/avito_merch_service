@@ -1,4 +1,4 @@
-## Avito merch shop service
+## Avito merch shop service 🧝🏻‍♀️
 
 Practicing GO Backend Tech Stack
 
@@ -60,3 +60,83 @@ make up-test
 ### Test
 
 После запуска зависимостей в корне проекта сформировался **.env**, где указан CONFIG_PATH (абсолютный путь конфига). Переменную необходимо установить в текущее окружение для интеграционного/е2е тестирования.
+
+. . .
+
+### Samples
+
+#### /api/register
+```
+curl -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"itsme","password":"OMGsecret007"}'
+```
+
+```
+{"id":"1e353f05-5ba4-4b2a-8b66-93b3f81e2885","username":"itsme","coins":1000,"created_at":"2026-03-22T21:34:51.498693-07:00"}
+```
+
+```
+{"errors":"Username already exists"}
+```
+
+#### /api/auth
+
+```
+curl -X POST http://localhost:8080/api/auth \
+  -H "Content-Type: application/json" \
+  -d '{"username":"itsme","password":"OMGsecret007"}'
+```
+
+```
+{"access_token":"eyJhbGciOiJIUzI1NiIs...","refresh_token":"eyJhbGciOiJIUzI1NiIs..."}
+```
+
+```
+{"errors":"Incorrect password"}
+```
+
+#### /api/buy/{item}
+
+```
+curl -X POST http://localhost:8080/api/buy/book \
+  -H "Content-Type: application/json" \
+  -d '{"quantity":2}' \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." 
+```
+
+```
+{"errors":"Item not found"}
+```
+
+```
+{"errors":"Not enough coins"}
+```
+
+#### /api/sendCoin
+
+```
+  curl -X POST http://localhost:8080/api/sendCoin \
+  -H "Content-Type: application/json" \
+  -d '{"toUser":"itsnotme", "amount":100}' \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." 
+```
+
+```
+{"errors":"You cannot send coins to yourself"}
+```
+
+```
+{"errors":"Not enough coins"}
+```
+
+#### /api/info
+
+```
+ curl -X GET http://localhost:8080/api/info \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." 
+```
+
+```
+{"coins":700,"inventory":[{"type":"book","quantity":4}],"coinHistory":{"sent":[{"toUser":"9304d5ea-da26-4ebb-a65f-1c30800814b8","amount":100}],"received":[]}}
+```

@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -20,50 +21,56 @@ func NewAuthHandler(uc *uc.AuthUsecase) *AuthHandler {
 }
 
 func (h *AuthHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
 
 	var form dto.AuthForm
 	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, ErrBadRequest)
 		return
 	}
 
 	if err := form.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	auth, err := h.uc.SignIn(r.Context(), &form)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, uc.ErrUsernameAlreadyExists) {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(auth); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, ErrInternalServerError)
 		return
 	}
 }
 
 func (h *AuthHandler) AuthUser(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
 
 	var form dto.AuthForm
 	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, ErrBadRequest)
 		return
 	}
 
 	if err := form.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	auth, err := h.uc.LogIn(r.Context(), &form)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, uc.ErrNotExistedUser) || errors.Is(err, uc.ErrIncorrectPassword) {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -72,7 +79,7 @@ func (h *AuthHandler) AuthUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(auth); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, ErrInternalServerError)
 		return
 	}
 }

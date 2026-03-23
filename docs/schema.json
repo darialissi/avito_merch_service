@@ -3,10 +3,21 @@
     "title": "API Avito shop",
     "version": "1.0.0"
   },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Регистрация / Aутентификация"
+    },
+    {
+      "name": "shop",
+      "description": "Покупки / Tранзакции"
+    }
+  ],
   "paths": {
     "/api/info": {
       "get": {
-        "summary": "Получить информацию о монетах, инвентаре и истории транзакций.",
+        "tags": ["shop"],
+        "summary": "Получение информации о монетах, инвентаре и истории транзакций.",
         "security": [
           {
             "BearerAuth": []
@@ -46,7 +57,8 @@
     },
     "/api/sendCoin": {
       "post": {
-        "summary": "Отправить монеты другому пользователю.",
+        "tags": ["shop"],
+        "summary": "Отправление монет другому пользователю.",
         "security": [
           {
             "BearerAuth": []
@@ -94,8 +106,9 @@
       }
     },
     "/api/buy/{item}": {
-      "get": {
-        "summary": "Купить предмет за монеты.",
+      "post": {
+        "tags": ["shop"],
+        "summary": "Покупка предмета за монеты.",
         "security": [
           {
             "BearerAuth": []
@@ -107,6 +120,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "required": true,
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/BuyItemRequest"
+            }
           }
         ],
         "responses": {
@@ -137,9 +158,52 @@
         ]
       }
     },
+    "/api/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Регистрация нового пользователя.",
+        "responses": {
+          "200": {
+            "description": "Успешная регистрация.",
+            "schema": {
+              "$ref": "#/definitions/UserResponse"
+            }
+          },
+          "400": {
+            "description": "Неверный запрос.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "required": true,
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/AuthRequest"
+            }
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
     "/api/auth": {
       "post": {
-        "summary": "Аутентификация и получение JWT-токена.",
+        "tags": ["auth"],
+        "summary": "Аутентификация и получение JWT-токенов.",
         "responses": {
           "200": {
             "description": "Успешная аутентификация.",
@@ -149,12 +213,6 @@
           },
           "400": {
             "description": "Неверный запрос.",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
-          },
-          "401": {
-            "description": "Неавторизован.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -284,9 +342,35 @@
     "AuthResponse": {
       "type": "object",
       "properties": {
-        "token": {
+        "access_token": {
           "type": "string",
           "description": "JWT-токен для доступа к защищенным ресурсам."
+        },
+        "refresh_token": {
+          "type": "string",
+          "description": "JWT-токен для обновления токенов."
+        }
+      }
+    },
+    "UserResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Идентификатор пользователя."
+        },
+        "username": {
+          "type": "string",
+          "description": "Имя пользователя."
+        },
+        "coins": {
+          "type": "integer",
+          "description": "Количество доступных монет."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Дата и время создания пользователя."
         }
       }
     },
@@ -305,6 +389,18 @@
       "required": [
         "toUser",
         "amount"
+      ]
+    },
+    "BuyItemRequest": {
+      "type": "object",
+      "properties": {
+        "quantity": {
+          "type": "integer",
+          "description": "Количество предметов для покупки."
+        }
+      },
+      "required": [
+        "quantity"
       ]
     }
   },

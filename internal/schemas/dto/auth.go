@@ -32,6 +32,7 @@ type AuthResponse struct {
 type UserResponse struct {
 	ID        uuid.UUID `json:"id"`
 	Username  string    `json:"username"`
+	Coins     float64   `json:"coins"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
