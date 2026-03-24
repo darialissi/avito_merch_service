@@ -52,8 +52,7 @@ func (sc *ShopUsecase) SendCoin(ctx context.Context, username string, data *dto.
 		// Определить, кто из полученных пользователей является отправителем, а кто получателем
 		sender, receiver := users[0], users[1]
 		if sender.Username != username {
-			sender = receiver
-			receiver = sender
+			sender, receiver = receiver, sender
 		}
 
 		// 2. Проверить, что у отправителя достаточно монет

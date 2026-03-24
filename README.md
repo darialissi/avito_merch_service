@@ -55,7 +55,7 @@ make up-test
 
 ### Dev
 
-После запуска зависимостей в корне проекта сформировался **.env**, где указан CONFIG_PATH (абсолютный путь конфига). Переменную необходимо установить в текущее окружение для локального запуска.
+После запуска зависимостей в корне проекта сформировался **.env**, где указан CONFIG_PATH (абсолютный путь конфига). Переменную необходимо установить в текущее окружение для локального запуска и накатки миграций.
 
 ### Test
 
@@ -138,5 +138,5 @@ curl -X POST http://localhost:8080/api/buy/book \
 ```
 
 ```
-{"coins":700,"inventory":[{"type":"book","quantity":4}],"coinHistory":{"sent":[{"toUser":"9304d5ea-da26-4ebb-a65f-1c30800814b8","amount":100}],"received":[]}}
+{"coins":300,"inventory":[{"type":"book","quantity":2},{"type":"hoodie","quantity":1}],"coinHistory":{"sent":[{"toUser":"83d19252-e491-4d97-9e4f-735f30a876ca","amount":500}],"received":[{"fromUser":"83d19252-e491-4d97-9e4f-735f30a876ca","amount":200}]}}
 ```
