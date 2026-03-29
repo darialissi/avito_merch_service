@@ -63,6 +63,11 @@ make up-test
 
 . . .
 
+```
+# unit
+make usecase-test
+```
+
 ### Samples
 
 #### /api/register

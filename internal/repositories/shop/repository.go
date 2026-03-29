@@ -24,36 +24,7 @@ func NewShopRepository(provider postgres.QueryEngineProvider) *ShopRepository {
 	}
 }
 
-func (r *ShopRepository) GetUserCoinsByUsername(ctx context.Context, username string, forUpdate bool) (*models.User, error) {
-	q := r.sb.
-		Select(usersTableColumnID, usersTableColumnUsername, usersTableColumnCoins).
-		From(usersTable).
-		Where(squirrel.Eq{usersTableColumnUsername: username})
-
-	if forUpdate {
-		q = q.Suffix("FOR UPDATE")
-	}
-
-	sql, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.User])
-	if err != nil {
-		return nil, err
-	}
-
-	return &u, nil
-}
-
-func (r *ShopRepository) GetSenderReceiverCoins(ctx context.Context, username1, username2 string, forUpdate bool) ([]models.User, error) {
+func (r *ShopRepository) GetUsersCoinsByUsernames(ctx context.Context, usernames []string, forUpdate bool) ([]models.User, error) {
 
 	q := r.sb.
 		Select(
@@ -63,7 +34,7 @@ func (r *ShopRepository) GetSenderReceiverCoins(ctx context.Context, username1, 
 		).
 		From(usersTable).
 		Where(squirrel.Eq{
-			usersTableColumnUsername: []string{username1, username2},
+			usersTableColumnUsername: usernames,
 		})
 
 	if forUpdate {
@@ -172,11 +143,14 @@ func (r *ShopRepository) GetReceivedTransactionsByUserID(ctx context.Context, us
 	return transactions, nil
 }
 
-func (r *ShopRepository) GetSentTransactionsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
+func (r *ShopRepository) GetTransactionsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
 	q := r.sb.
 		Select(transactionsTableColumns...).
 		From(transactionsTable).
-		Where(squirrel.Eq{transactionsTableColumnFromUserID: userID})
+		Where(squirrel.Or{
+			squirrel.Eq{transactionsTableColumnFromUserID: userID},
+			squirrel.Eq{transactionsTableColumnToUserID: userID},
+		})
 
 	sql, args, err := q.ToSql()
 	if err != nil {

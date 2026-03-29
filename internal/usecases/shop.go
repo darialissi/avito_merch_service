@@ -3,24 +3,50 @@ package usecases
 import (
 	"context"
 	"errors"
+	"github.com/darialissi/avito_merch_service/internal/models"
 	"github.com/darialissi/avito_merch_service/internal/repositories/shop"
 	"github.com/darialissi/avito_merch_service/internal/schemas/dto"
-	"github.com/darialissi/avito_merch_service/lib/postgres"
+	"github.com/google/uuid"
 )
 
 type ShopUsecase struct {
-	repo *shop.ShopRepository
-	tm   *postgres.TransactionManager
+	repo ShopRepository
+	tm   TransactionManager
 }
 
-func NewShopUsecase(
-	repo *shop.ShopRepository,
-	tm *postgres.TransactionManager,
-) *ShopUsecase {
+func NewShopUsecase(repo ShopRepository, tm TransactionManager) *ShopUsecase {
 	return &ShopUsecase{
 		repo: repo,
 		tm:   tm,
 	}
+}
+
+//go:generate mockgen -source=shop.go -destination=../mocks/shop_mock.go -package=mocks
+type ShopRepository interface {
+	// Получить монеты пользователей по username с опциональной блокировкой строк для обновления
+	GetUsersCoinsByUsernames(ctx context.Context, usernames []string, forUpdate bool) ([]models.User, error)
+	// Обновить количество монет пользователя по username
+	UpdateUserCoinsByUsername(ctx context.Context, username string, coins float64) (*models.User, error)
+	// Получить товар по наименованию
+	GetItemByName(ctx context.Context, name string) (*models.Item, error)
+	// Сохранить запись инвентаря пользователя
+	SaveUserItem(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error)
+	// Получить запись инвентаря пользователя
+	GetUserItem(ctx context.Context, userID, itemID uuid.UUID, forUpdate bool) (*models.UserItem, error)
+	// Обновить запись инвентаря пользователя (количество товара)
+	UpdateUserItemQuantity(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error)
+	// Получить инвентарь пользователя по userID с наименованиями товаров
+	GetUserItemsByUserID(ctx context.Context, userID uuid.UUID) ([]models.UserItemExtended, error)
+	// Получить транзакции пользователя по userID
+	GetTransactionsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
+	// Сохранить транзакцию
+	SaveTransaction(ctx context.Context, fromUserID uuid.UUID, toUserID uuid.UUID, amount float64) (*models.Transaction, error)
+}
+
+type TransactionManager interface {
+	RunReadCommitted(ctx context.Context, f func(txCtx context.Context) error) error
+	RunRepeatableRead(ctx context.Context, f func(txCtx context.Context) error) error
+	RunSerializable(ctx context.Context, f func(txCtx context.Context) error) error
 }
 
 type ShopUsecases interface {
@@ -28,6 +54,7 @@ type ShopUsecases interface {
 	SendCoin(ctx context.Context, username string, data *dto.TransactionData) error
 	// Покупка товара на монеты
 	BuyItem(ctx context.Context, username string, data *dto.BuyItemData) error
+	// Получение агрегированной информации о пользователе (монеты, инвентарь, история транзакций)
 	Info(ctx context.Context, username string) (*dto.AggregatedInfo, error)
 }
 
@@ -40,7 +67,7 @@ func (sc *ShopUsecase) SendCoin(ctx context.Context, username string, data *dto.
 	err := sc.tm.RunRepeatableRead(ctx, func(txCtx context.Context) error {
 
 		// 1. Получить данные отправителя и получателя с блокировкой строк для обновления монет
-		users, err := sc.repo.GetSenderReceiverCoins(ctx, username, data.ToUser, true)
+		users, err := sc.repo.GetUsersCoinsByUsernames(ctx, []string{username, data.ToUser}, true)
 		if err != nil {
 			return err
 		}
@@ -101,10 +128,16 @@ func (sc *ShopUsecase) BuyItem(ctx context.Context, username string, data *dto.B
 		}
 
 		// Получить данные пользователя с блокировкой строки
-		user, err := sc.repo.GetUserCoinsByUsername(txCtx, username, true)
+		users, err := sc.repo.GetUsersCoinsByUsernames(txCtx, []string{username}, true)
 		if err != nil {
 			return err
 		}
+
+		if len(users) == 0 {
+			return ErrUserNotFound
+		}
+
+		user := users[0]
 
 		// Проверить, что у пользователя достаточно монет
 		totalPrice := item.Price * float64(data.Quantity)
@@ -152,10 +185,16 @@ func (sc *ShopUsecase) BuyItem(ctx context.Context, username string, data *dto.B
 func (sc *ShopUsecase) Info(ctx context.Context, username string) (*dto.AggregatedInfo, error) {
 
 	// Получить данные пользователя
-	user, err := sc.repo.GetUserCoinsByUsername(ctx, username, false)
+	users, err := sc.repo.GetUsersCoinsByUsernames(ctx, []string{username}, false)
 	if err != nil {
 		return nil, err
 	}
+
+	if len(users) == 0 {
+		return nil, ErrUserNotFound
+	}
+
+	user := users[0]
 
 	// Получить данные инвентаря пользователя
 	items, err := sc.repo.GetUserItemsByUserID(ctx, user.ID)
@@ -163,16 +202,19 @@ func (sc *ShopUsecase) Info(ctx context.Context, username string) (*dto.Aggregat
 		return nil, err
 	}
 
-	// Получить отправленные транзакции пользователя
-	sent, err := sc.repo.GetSentTransactionsByUserID(ctx, user.ID)
+	// Получить транзакции пользователя
+	transactions, err := sc.repo.GetTransactionsByUserID(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Получить полученные транзакции пользователя
-	received, err := sc.repo.GetReceivedTransactionsByUserID(ctx, user.ID)
-	if err != nil {
-		return nil, err
+	sent, received := make([]models.Transaction, 0), make([]models.Transaction, 0)
+	for _, t := range transactions {
+		if t.FromUser == user.ID {
+			sent = append(sent, t)
+		} else {
+			received = append(received, t)
+		}
 	}
 
 	// Сформировать ответ
@@ -186,14 +228,14 @@ func (sc *ShopUsecase) Info(ctx context.Context, username string) (*dto.Aggregat
 	sentTransactions := make([]dto.SentTransaction, len(sent))
 	for i, t := range sent {
 		sentTransactions[i] = dto.SentTransaction{
-			ToUser: t.ToUser,
+			ToUser: t.ToUser.String(),
 			Amount: t.Coins,
 		}
 	}
 	receivedTransactions := make([]dto.ReceivedTransaction, len(received))
 	for i, t := range received {
 		receivedTransactions[i] = dto.ReceivedTransaction{
-			FromUser: t.FromUser,
+			FromUser: t.FromUser.String(),
 			Amount:   t.Coins,
 		}
 	}

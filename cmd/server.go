@@ -61,10 +61,11 @@ func main() {
 	accessTTL, _ := time.ParseDuration(cfg.App.JWTConfig.AccessToken.Exp)
 	refreshTTL, _ := time.ParseDuration(cfg.App.JWTConfig.RefreshToken.Exp)
 	TokenHelper := auth_utils.NewJWTHelper(cfg.App.JWTConfig.AccessToken.Secret, cfg.App.JWTConfig.RefreshToken.Secret, accessTTL, refreshTTL)
+	PasswordHelper := auth_utils.NewPasswordHelper()
 
 	AuthRepository := auth_repo.NewAuthRepository(txMngr)
 	TokenStorage := token_storage.NewTokenStorage(rdb, refreshTTL)
-	AuthUsecase := uc.NewAuthUsecase(AuthRepository, TokenStorage, TokenHelper)
+	AuthUsecase := uc.NewAuthUsecase(AuthRepository, TokenStorage, TokenHelper, PasswordHelper)
 	AuthHandler := ctrl.NewAuthHandler(AuthUsecase)
 
 	ShopRepository := shop_repo.NewShopRepository(txMngr)

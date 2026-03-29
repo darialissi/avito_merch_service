@@ -4,24 +4,57 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/darialissi/avito_merch_service/internal/models"
 	"github.com/darialissi/avito_merch_service/internal/repositories/auth"
-	"github.com/darialissi/avito_merch_service/internal/repositories/token"
 	"github.com/darialissi/avito_merch_service/internal/schemas/dto"
-	utils "github.com/darialissi/avito_merch_service/internal/utils/auth"
+	"github.com/google/uuid"
 )
 
 type AuthUsecase struct {
-	repo      *auth.AuthRepository
-	storage   *token.TokenStorage
-	jwtHelper *utils.JWTHelper
+	repo       AuthRepository
+	storage    TokenStorage
+	jwtHelper  JWTHelper
+	passHelper PasswordHelper
 }
 
-func NewAuthUsecase(repo *auth.AuthRepository, storage *token.TokenStorage, jwtHelper *utils.JWTHelper) *AuthUsecase {
+func NewAuthUsecase(repo AuthRepository, storage TokenStorage, jwtHelper JWTHelper, passHelper PasswordHelper) *AuthUsecase {
 	return &AuthUsecase{
-		repo:      repo,
-		storage:   storage,
-		jwtHelper: jwtHelper,
+		repo:       repo,
+		storage:    storage,
+		jwtHelper:  jwtHelper,
+		passHelper: passHelper,
 	}
+}
+
+//go:generate mockgen -source=auth.go -destination=../mocks/auth_mock.go -package=mocks
+type AuthRepository interface {
+	// Сохранить нового пользователя
+	SaveUser(ctx context.Context, data *dto.UserForm) (*models.User, error)
+	// Получить пользователя по ID
+	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	// Получить пользователя по username
+	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+}
+
+type TokenStorage interface {
+	// Сохранить токен
+	SetToken(ctx context.Context, data *dto.TokenStore) error
+	// Получить токен
+	GetToken(ctx context.Context, username string) (string, error)
+}
+
+type JWTHelper interface {
+	// Сгенерировать Access токен
+	CreateAccessToken(username, userID string) (string, error)
+	// Сгенерировать Refresh токен
+	CreateRefreshToken(username, userID string) (string, error)
+}
+
+type PasswordHelper interface {
+	// Захешировать пароль
+	HashPassword(password string) (string, error)
+	// Сравнить пароль и его хеш
+	VerifyPassword(password, hashed string) (bool, error)
 }
 
 type AuthUsecases interface {
@@ -37,7 +70,7 @@ var _ AuthUsecases = (*AuthUsecase)(nil)
 func (ac *AuthUsecase) SignIn(ctx context.Context, form *dto.AuthForm) (*dto.UserResponse, error) {
 
 	// 0. Хешировать пароль.
-	hashed, err := utils.HashPassword(form.Password)
+	hashed, err := ac.passHelper.HashPassword(form.Password)
 	if err != nil {
 		return nil, fmt.Errorf("HashPassword error: %w", err)
 	}
@@ -72,12 +105,16 @@ func (ac *AuthUsecase) LogIn(ctx context.Context, form *dto.AuthForm) (*dto.Auth
 	// 1. Проверить наличие пользователя в БД.
 	user, err := ac.repo.GetUserByUsername(ctx, form.Username)
 
+	if err != nil {
+		return nil, fmt.Errorf("GetUserByUsername error: %w", err)
+	}
+
 	if user == nil {
 		return nil, ErrNotExistedUser
 	}
 
 	// 2. Проверить корректность пароля.
-	isValid, err := utils.VerifyPassword(form.Password, user.HashedPassword)
+	isValid, err := ac.passHelper.VerifyPassword(form.Password, user.HashedPassword)
 	if err != nil {
 		return nil, fmt.Errorf("VerifyPassword error: %w", err)
 	}

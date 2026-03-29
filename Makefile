@@ -30,3 +30,9 @@ up-dev: .env-dev .build_migration_image
 
 up-test: .env-test .build_migration_image
 	docker compose --profile test up -d
+
+gen-mocks:
+	go generate ./internal/usecases/...
+
+usecase-test:
+	go test ./internal/usecases/tests

@@ -6,7 +6,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HashPassword(password string) (string, error) {
+type PasswordHelper struct{}
+
+func NewPasswordHelper() *PasswordHelper {
+	return &PasswordHelper{}
+}
+
+func (ph *PasswordHelper) HashPassword(password string) (string, error) {
 	const cost = 12
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
@@ -16,7 +22,7 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func VerifyPassword(password, hash string) (bool, error) {
+func (ph *PasswordHelper) VerifyPassword(password, hash string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err == nil {
 		return true, nil
