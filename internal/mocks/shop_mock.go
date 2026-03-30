@@ -67,21 +67,6 @@ func (mr *MockShopRepositoryMockRecorder) GetTransactionsByUserID(ctx, userID in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransactionsByUserID", reflect.TypeOf((*MockShopRepository)(nil).GetTransactionsByUserID), ctx, userID)
 }
 
-// GetUserItem mocks base method.
-func (m *MockShopRepository) GetUserItem(ctx context.Context, userID, itemID uuid.UUID, forUpdate bool) (*models.UserItem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserItem", ctx, userID, itemID, forUpdate)
-	ret0, _ := ret[0].(*models.UserItem)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUserItem indicates an expected call of GetUserItem.
-func (mr *MockShopRepositoryMockRecorder) GetUserItem(ctx, userID, itemID, forUpdate interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserItem", reflect.TypeOf((*MockShopRepository)(nil).GetUserItem), ctx, userID, itemID, forUpdate)
-}
-
 // GetUserItemsByUserID mocks base method.
 func (m *MockShopRepository) GetUserItemsByUserID(ctx context.Context, userID uuid.UUID) ([]models.UserItemExtended, error) {
 	m.ctrl.T.Helper()
@@ -113,63 +98,48 @@ func (mr *MockShopRepositoryMockRecorder) GetUsersCoinsByUsernames(ctx, username
 }
 
 // SaveTransaction mocks base method.
-func (m *MockShopRepository) SaveTransaction(ctx context.Context, fromUserID, toUserID uuid.UUID, amount float64) (*models.Transaction, error) {
+func (m *MockShopRepository) SaveTransaction(ctx context.Context, data *dto.TransactionFullData) (*models.Transaction, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveTransaction", ctx, fromUserID, toUserID, amount)
+	ret := m.ctrl.Call(m, "SaveTransaction", ctx, data)
 	ret0, _ := ret[0].(*models.Transaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SaveTransaction indicates an expected call of SaveTransaction.
-func (mr *MockShopRepositoryMockRecorder) SaveTransaction(ctx, fromUserID, toUserID, amount interface{}) *gomock.Call {
+func (mr *MockShopRepositoryMockRecorder) SaveTransaction(ctx, data interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveTransaction", reflect.TypeOf((*MockShopRepository)(nil).SaveTransaction), ctx, fromUserID, toUserID, amount)
-}
-
-// SaveUserItem mocks base method.
-func (m *MockShopRepository) SaveUserItem(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveUserItem", ctx, userID, itemID, quantity)
-	ret0, _ := ret[0].(*models.UserItem)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SaveUserItem indicates an expected call of SaveUserItem.
-func (mr *MockShopRepositoryMockRecorder) SaveUserItem(ctx, userID, itemID, quantity interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveUserItem", reflect.TypeOf((*MockShopRepository)(nil).SaveUserItem), ctx, userID, itemID, quantity)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveTransaction", reflect.TypeOf((*MockShopRepository)(nil).SaveTransaction), ctx, data)
 }
 
 // UpdateUserCoinsByUsername mocks base method.
-func (m *MockShopRepository) UpdateUserCoinsByUsername(ctx context.Context, username string, coins float64) (*models.User, error) {
+func (m *MockShopRepository) UpdateUserCoinsByUsername(ctx context.Context, userCoins *dto.UserCoins) (*models.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateUserCoinsByUsername", ctx, username, coins)
+	ret := m.ctrl.Call(m, "UpdateUserCoinsByUsername", ctx, userCoins)
 	ret0, _ := ret[0].(*models.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateUserCoinsByUsername indicates an expected call of UpdateUserCoinsByUsername.
-func (mr *MockShopRepositoryMockRecorder) UpdateUserCoinsByUsername(ctx, username, coins interface{}) *gomock.Call {
+func (mr *MockShopRepositoryMockRecorder) UpdateUserCoinsByUsername(ctx, userCoins interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserCoinsByUsername", reflect.TypeOf((*MockShopRepository)(nil).UpdateUserCoinsByUsername), ctx, username, coins)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserCoinsByUsername", reflect.TypeOf((*MockShopRepository)(nil).UpdateUserCoinsByUsername), ctx, userCoins)
 }
 
-// UpdateUserItemQuantity mocks base method.
-func (m *MockShopRepository) UpdateUserItemQuantity(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error) {
+// UpsertUserItemQuantity mocks base method.
+func (m *MockShopRepository) UpsertUserItemQuantity(ctx context.Context, data *dto.UserItemData) (*models.UserItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateUserItemQuantity", ctx, userID, itemID, quantity)
+	ret := m.ctrl.Call(m, "UpsertUserItemQuantity", ctx, data)
 	ret0, _ := ret[0].(*models.UserItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// UpdateUserItemQuantity indicates an expected call of UpdateUserItemQuantity.
-func (mr *MockShopRepositoryMockRecorder) UpdateUserItemQuantity(ctx, userID, itemID, quantity interface{}) *gomock.Call {
+// UpsertUserItemQuantity indicates an expected call of UpsertUserItemQuantity.
+func (mr *MockShopRepositoryMockRecorder) UpsertUserItemQuantity(ctx, data interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserItemQuantity", reflect.TypeOf((*MockShopRepository)(nil).UpdateUserItemQuantity), ctx, userID, itemID, quantity)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertUserItemQuantity", reflect.TypeOf((*MockShopRepository)(nil).UpsertUserItemQuantity), ctx, data)
 }
 
 // MockTransactionManager is a mock of TransactionManager interface.

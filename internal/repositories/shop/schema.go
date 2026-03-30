@@ -1,6 +1,7 @@
 package shop
 
 const usersTable = "users"
+const usersTablePrefix = "u"
 
 const (
 	usersTableColumnID       = "id"
@@ -45,6 +46,7 @@ var userItemsTableColumns = []string{
 }
 
 const transactionsTable = "transactions"
+const transactionsTablePrefix = "t"
 
 const (
 	transactionsTableColumnID         = "id"

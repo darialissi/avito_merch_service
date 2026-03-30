@@ -1,5 +1,9 @@
 package dto
 
+import (
+	"github.com/google/uuid"
+)
+
 type TransactionData struct {
 	ToUser string  `json:"toUser"`
 	Amount float64 `json:"amount"`
@@ -14,6 +18,12 @@ func (t *TransactionData) Validate(fromUser string) error {
 	}
 
 	return nil
+}
+
+type TransactionFullData struct {
+	FromUser string  `json:"fromUser"`
+	ToUser   string  `json:"toUser"`
+	Amount   float64 `json:"amount"`
 }
 
 type BuyItemRequest struct {
@@ -57,4 +67,15 @@ type AggregatedInfo struct {
 	Coins       float64         `json:"coins"`
 	Inventory   []InventoryUnit `json:"inventory"`
 	CoinHistory CoinHistory     `json:"coinHistory"`
+}
+
+type UserItemData struct {
+	UserID   uuid.UUID
+	ItemID   uuid.UUID
+	Quantity int
+}
+
+type UserCoins struct {
+	Username string
+	Coins    float64
 }

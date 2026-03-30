@@ -25,22 +25,18 @@ func NewShopUsecase(repo ShopRepository, tm TransactionManager) *ShopUsecase {
 type ShopRepository interface {
 	// Получить монеты пользователей по username с опциональной блокировкой строк для обновления
 	GetUsersCoinsByUsernames(ctx context.Context, usernames []string, forUpdate bool) ([]models.User, error)
-	// Обновить количество монет пользователя по username
-	UpdateUserCoinsByUsername(ctx context.Context, username string, coins float64) (*models.User, error)
+	// Обновить количество монет пользователей по username
+	UpdateUserCoinsByUsername(ctx context.Context, userCoins *dto.UserCoins) (*models.User, error)
 	// Получить товар по наименованию
 	GetItemByName(ctx context.Context, name string) (*models.Item, error)
-	// Сохранить запись инвентаря пользователя
-	SaveUserItem(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error)
-	// Получить запись инвентаря пользователя
-	GetUserItem(ctx context.Context, userID, itemID uuid.UUID, forUpdate bool) (*models.UserItem, error)
-	// Обновить запись инвентаря пользователя (количество товара)
-	UpdateUserItemQuantity(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error)
+	// Обновить или создать запись инвентаря пользователя
+	UpsertUserItemQuantity(ctx context.Context, data *dto.UserItemData) (*models.UserItem, error)
 	// Получить инвентарь пользователя по userID с наименованиями товаров
 	GetUserItemsByUserID(ctx context.Context, userID uuid.UUID) ([]models.UserItemExtended, error)
 	// Получить транзакции пользователя по userID
 	GetTransactionsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
 	// Сохранить транзакцию
-	SaveTransaction(ctx context.Context, fromUserID uuid.UUID, toUserID uuid.UUID, amount float64) (*models.Transaction, error)
+	SaveTransaction(ctx context.Context, data *dto.TransactionFullData) (*models.Transaction, error)
 }
 
 type TransactionManager interface {
@@ -67,7 +63,7 @@ func (sc *ShopUsecase) SendCoin(ctx context.Context, username string, data *dto.
 	err := sc.tm.RunRepeatableRead(ctx, func(txCtx context.Context) error {
 
 		// 1. Получить данные отправителя и получателя с блокировкой строк для обновления монет
-		users, err := sc.repo.GetUsersCoinsByUsernames(ctx, []string{username, data.ToUser}, true)
+		users, err := sc.repo.GetUsersCoinsByUsernames(txCtx, []string{username, data.ToUser}, true)
 		if err != nil {
 			return err
 		}
@@ -92,14 +88,18 @@ func (sc *ShopUsecase) SendCoin(ctx context.Context, username string, data *dto.
 		receiver.Coins += data.Amount
 
 		// 5. Сохранить изменения в БД
-		if _, err := sc.repo.UpdateUserCoinsByUsername(txCtx, sender.Username, sender.Coins); err != nil {
+		if _, err := sc.repo.UpdateUserCoinsByUsername(txCtx, &dto.UserCoins{Username: sender.Username, Coins: sender.Coins}); err != nil {
 			return err
 		}
-		if _, err := sc.repo.UpdateUserCoinsByUsername(txCtx, receiver.Username, receiver.Coins); err != nil {
+		if _, err := sc.repo.UpdateUserCoinsByUsername(txCtx, &dto.UserCoins{Username: receiver.Username, Coins: receiver.Coins}); err != nil {
 			return err
 		}
 
-		if _, err := sc.repo.SaveTransaction(txCtx, sender.ID, receiver.ID, data.Amount); err != nil {
+		if _, err := sc.repo.SaveTransaction(txCtx, &dto.TransactionFullData{
+			FromUser: sender.Username,
+			ToUser:   receiver.Username,
+			Amount:   data.Amount,
+		}); err != nil {
 			return err
 		}
 
@@ -149,27 +149,19 @@ func (sc *ShopUsecase) BuyItem(ctx context.Context, username string, data *dto.B
 		user.Coins -= totalPrice
 
 		// Сохранить изменения в БД
-		if _, err := sc.repo.UpdateUserCoinsByUsername(txCtx, user.Username, user.Coins); err != nil {
+		if _, err := sc.repo.UpdateUserCoinsByUsername(txCtx, &dto.UserCoins{Username: user.Username, Coins: user.Coins}); err != nil {
 			return err
 		}
 
-		record, err := sc.repo.GetUserItem(txCtx, user.ID, item.ID, true)
-
-		if err != nil {
-			return err
+		record := &dto.UserItemData{
+			UserID:   user.ID,
+			ItemID:   item.ID,
+			Quantity: data.Quantity,
 		}
 
-		if record == nil {
-			// Если у пользователя нет этого товара, создать запись
-			if _, err := sc.repo.SaveUserItem(txCtx, user.ID, item.ID, data.Quantity); err != nil {
-				return err
-			}
-		} else {
-			// Если товар уже есть, обновить количество
-			newQuantity := record.Quantity + data.Quantity
-			if _, err := sc.repo.UpdateUserItemQuantity(txCtx, user.ID, item.ID, newQuantity); err != nil {
-				return err
-			}
+		// Обновить или создать запись инвентаря пользователя
+		if _, err := sc.repo.UpsertUserItemQuantity(txCtx, record); err != nil {
+			return err
 		}
 
 		return nil

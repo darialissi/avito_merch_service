@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/Masterminds/squirrel"
 	"github.com/darialissi/avito_merch_service/internal/models"
+	"github.com/darialissi/avito_merch_service/internal/schemas/dto"
 	"github.com/darialissi/avito_merch_service/lib/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -60,11 +61,11 @@ func (r *ShopRepository) GetUsersCoinsByUsernames(ctx context.Context, usernames
 	return users, nil
 }
 
-func (r *ShopRepository) UpdateUserCoinsByUsername(ctx context.Context, username string, coins float64) (*models.User, error) {
+func (r *ShopRepository) UpdateUserCoinsByUsername(ctx context.Context, userCoins *dto.UserCoins) (*models.User, error) {
 	q := r.sb.
 		Update(usersTable).
-		Set(usersTableColumnCoins, coins).
-		Where(squirrel.Eq{usersTableColumnUsername: username}).
+		Set(usersTableColumnCoins, userCoins.Coins).
+		Where(squirrel.Eq{usersTableColumnUsername: userCoins.Username}).
 		Suffix("RETURNING " + strings.Join(usersTableColumns, ","))
 
 	sql, args, err := q.ToSql()
@@ -84,6 +85,48 @@ func (r *ShopRepository) UpdateUserCoinsByUsername(ctx context.Context, username
 	}
 
 	return &u, nil
+}
+
+func (r *ShopRepository) UpsertUserItemQuantity(ctx context.Context, data *dto.UserItemData) (*models.UserItem, error) {
+	q := r.sb.
+		Insert(userItemsTable).
+		Columns(
+			userItemsTableColumnUserID,
+			userItemsTableColumnItemID,
+			userItemsTableColumnQuantity,
+		).
+		Values(
+			data.UserID,
+			data.ItemID,
+			data.Quantity,
+		).
+		Suffix(
+			`ON CONFLICT (` + userItemsTableColumnUserID + `, ` + userItemsTableColumnItemID + `)
+			DO UPDATE
+			SET ` + userItemsTableColumnQuantity + ` = ` + userItemsTable + `.` + userItemsTableColumnQuantity + ` + EXCLUDED.` + userItemsTableColumnQuantity + `
+			RETURNING ` + strings.Join(userItemsTableColumns, ", "),
+		)
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	record, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.UserItem])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &record, nil
 }
 
 func (r *ShopRepository) GetUserItemsByUserID(ctx context.Context, userID uuid.UUID) ([]models.UserItemExtended, error) {
@@ -118,31 +161,6 @@ func (r *ShopRepository) GetUserItemsByUserID(ctx context.Context, userID uuid.U
 	return items, nil
 }
 
-func (r *ShopRepository) GetReceivedTransactionsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
-	q := r.sb.
-		Select(transactionsTableColumns...).
-		From(transactionsTable).
-		Where(squirrel.Eq{transactionsTableColumnToUserID: userID})
-
-	sql, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	transactions, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.Transaction])
-	if err != nil {
-		return nil, err
-	}
-
-	return transactions, nil
-}
-
 func (r *ShopRepository) GetTransactionsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
 	q := r.sb.
 		Select(transactionsTableColumns...).
@@ -171,7 +189,7 @@ func (r *ShopRepository) GetTransactionsByUserID(ctx context.Context, userID uui
 	return transactions, nil
 }
 
-func (r *ShopRepository) SaveTransaction(ctx context.Context, fromUserID uuid.UUID, toUserID uuid.UUID, amount float64) (*models.Transaction, error) {
+func (r *ShopRepository) SaveTransaction(ctx context.Context, data *dto.TransactionFullData) (*models.Transaction, error) {
 
 	q := r.sb.
 		Insert(transactionsTable).
@@ -180,7 +198,7 @@ func (r *ShopRepository) SaveTransaction(ctx context.Context, fromUserID uuid.UU
 			transactionsTableColumnToUserID,
 			transactionsTableColumnCoins,
 		).
-		Values(fromUserID, toUserID, amount).
+		Values(data.FromUser, data.ToUser, data.Amount).
 		Suffix("RETURNING " + strings.Join(transactionsTableColumns, ","))
 
 	sql, args, err := q.ToSql()
@@ -231,102 +249,4 @@ func (r *ShopRepository) GetItemByName(ctx context.Context, name string) (*model
 	}
 
 	return &item, nil
-}
-
-func (r *ShopRepository) GetUserItem(ctx context.Context, userID, itemID uuid.UUID, forUpdate bool) (*models.UserItem, error) {
-	q := r.sb.
-		Select(userItemsTableColumnUserID, userItemsTableColumnItemID, userItemsTableColumnQuantity).
-		From(userItemsTable).
-		Where(squirrel.And{
-			squirrel.Eq{userItemsTableColumnUserID: userID},
-			squirrel.Eq{userItemsTableColumnItemID: itemID},
-		})
-
-	if forUpdate {
-		q = q.Suffix("FOR UPDATE")
-	}
-
-	sql, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	item, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.UserItem])
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &item, nil
-}
-
-func (r *ShopRepository) UpdateUserItemQuantity(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error) {
-	q := r.sb.
-		Update(userItemsTable).
-		Set(userItemsTableColumnQuantity, quantity).
-		Where(squirrel.And{
-			squirrel.Eq{userItemsTableColumnUserID: userID},
-			squirrel.Eq{userItemsTableColumnItemID: itemID},
-		}).
-		Suffix("RETURNING " + strings.Join(userItemsTableColumns, ","))
-
-	sql, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	i, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.UserItem])
-	if err != nil {
-		return nil, err
-	}
-
-	return &i, nil
-}
-
-func (r *ShopRepository) SaveUserItem(ctx context.Context, userID, itemID uuid.UUID, quantity int) (*models.UserItem, error) {
-
-	q := r.sb.
-		Insert(userItemsTable).
-		Columns(
-			userItemsTableColumnUserID,
-			userItemsTableColumnItemID,
-			userItemsTableColumnQuantity,
-		).
-		Values(userID, itemID, quantity).
-		Suffix("RETURNING " + strings.Join(userItemsTableColumns, ","))
-
-	sql, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := r.provider.GetQueryEngine(ctx).Query(ctx, sql, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	u, err := pgx.CollectOneRow(rows, pgx.RowToStructByNameLax[models.UserItem])
-	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
-			return nil, ErrUniqueConflict
-		}
-		return nil, err
-	}
-
-	return &u, nil
 }

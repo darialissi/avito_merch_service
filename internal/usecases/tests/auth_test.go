@@ -60,7 +60,6 @@ func TestAuthUsecase_SignIn(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		mockUser *models.User
 		hashResp hashPasswordResult
 		saveResp saveUserResult
 		wantResp *dto.UserResponse
