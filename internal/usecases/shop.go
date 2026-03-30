@@ -200,44 +200,46 @@ func (sc *ShopUsecase) Info(ctx context.Context, username string) (*dto.Aggregat
 		return nil, err
 	}
 
-	sent, received := make([]models.Transaction, 0), make([]models.Transaction, 0)
+	sentCount := 0
+	receivedCount := 0
 	for _, t := range transactions {
 		if t.FromUser == user.ID {
-			sent = append(sent, t)
+			sentCount++
 		} else {
-			received = append(received, t)
+			receivedCount++
 		}
 	}
 
-	// Сформировать ответ
-	inventory := make([]dto.InventoryUnit, len(items))
+	// Сформировать ответ.
+	response := &dto.AggregatedInfo{
+		Coins:     user.Coins,
+		Inventory: make([]dto.InventoryUnit, len(items)),
+		CoinHistory: dto.CoinHistory{
+			Sent:     make([]dto.SentTransaction, 0, sentCount),
+			Received: make([]dto.ReceivedTransaction, 0, receivedCount),
+		},
+	}
+
 	for i, item := range items {
-		inventory[i] = dto.InventoryUnit{
+		response.Inventory[i] = dto.InventoryUnit{
 			ItemName: item.ItemName,
 			Quantity: item.Quantity,
 		}
 	}
-	sentTransactions := make([]dto.SentTransaction, len(sent))
-	for i, t := range sent {
-		sentTransactions[i] = dto.SentTransaction{
-			ToUser: t.ToUser.String(),
-			Amount: t.Coins,
+
+	for _, t := range transactions {
+		if t.FromUser == user.ID {
+			response.CoinHistory.Sent = append(response.CoinHistory.Sent, dto.SentTransaction{
+				ToUser: t.ToUser.String(),
+				Amount: t.Coins,
+			})
+			continue
 		}
-	}
-	receivedTransactions := make([]dto.ReceivedTransaction, len(received))
-	for i, t := range received {
-		receivedTransactions[i] = dto.ReceivedTransaction{
+
+		response.CoinHistory.Received = append(response.CoinHistory.Received, dto.ReceivedTransaction{
 			FromUser: t.FromUser.String(),
 			Amount:   t.Coins,
-		}
-	}
-	response := &dto.AggregatedInfo{
-		Coins:     user.Coins,
-		Inventory: inventory,
-		CoinHistory: dto.CoinHistory{
-			Sent:     sentTransactions,
-			Received: receivedTransactions,
-		},
+		})
 	}
 
 	return response, nil

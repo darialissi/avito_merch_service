@@ -59,13 +59,35 @@ make up-test
 
 ### Test
 
-После запуска зависимостей в корне проекта сформировался **.env**, где указан CONFIG_PATH (абсолютный путь конфига). Переменную необходимо установить в текущее окружение для интеграционного/е2е тестирования.
-
-. . .
-
 ```
 # unit
-make usecase-test
+make unit-test
+```
+
+```
+# integration
+make integration-test
+
+# or without building deps
+make integration-test-fast
+```
+
+```
+# e2e
+make e2e-test
+
+# or without building deps
+make e2e-test-fast
+```
+
+```
+# benchmarks
+make db-bench
+make usecase-bench
+
+# or without building deps
+make db-bench-fast
+make usecase-bench-fast
 ```
 
 ### Samples
