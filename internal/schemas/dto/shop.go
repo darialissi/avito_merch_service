@@ -21,9 +21,9 @@ func (t *TransactionData) Validate(fromUser string) error {
 }
 
 type TransactionFullData struct {
-	FromUser string  `json:"fromUser"`
-	ToUser   string  `json:"toUser"`
-	Amount   float64 `json:"amount"`
+	FromUserID uuid.UUID `json:"fromUser"`
+	ToUserID   uuid.UUID `json:"toUser"`
+	Amount     float64   `json:"amount"`
 }
 
 type BuyItemRequest struct {

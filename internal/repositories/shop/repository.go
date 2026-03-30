@@ -198,7 +198,7 @@ func (r *ShopRepository) SaveTransaction(ctx context.Context, data *dto.Transact
 			transactionsTableColumnToUserID,
 			transactionsTableColumnCoins,
 		).
-		Values(data.FromUser, data.ToUser, data.Amount).
+		Values(data.FromUserID, data.ToUserID, data.Amount).
 		Suffix("RETURNING " + strings.Join(transactionsTableColumns, ","))
 
 	sql, args, err := q.ToSql()

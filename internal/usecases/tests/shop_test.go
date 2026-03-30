@@ -198,11 +198,11 @@ func TestShopUsecase_SendCoin(t *testing.T) {
 								repo.EXPECT().
 									SaveTransaction(gomock.Any(), gomock.Any()).
 									DoAndReturn(func(_ context.Context, txData *dto.TransactionFullData) (*models.Transaction, error) {
-										if txData.FromUser != sender.Username {
-											t.Fatalf("expected FromUser %q, got %q", sender.Username, txData.FromUser)
+										if txData.FromUserID != sender.ID {
+											t.Fatalf("expected FromUserID %q, got %q", sender.ID, txData.FromUserID)
 										}
-										if txData.ToUser != receiver.Username {
-											t.Fatalf("expected ToUser %q, got %q", receiver.Username, txData.ToUser)
+										if txData.ToUserID != receiver.ID {
+											t.Fatalf("expected ToUserID %q, got %q", receiver.ID, txData.ToUserID)
 										}
 										if txData.Amount != data.Amount {
 											t.Fatalf("expected Amount %f, got %f", data.Amount, txData.Amount)

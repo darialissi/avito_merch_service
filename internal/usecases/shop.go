@@ -96,9 +96,9 @@ func (sc *ShopUsecase) SendCoin(ctx context.Context, username string, data *dto.
 		}
 
 		if _, err := sc.repo.SaveTransaction(txCtx, &dto.TransactionFullData{
-			FromUser: sender.Username,
-			ToUser:   receiver.Username,
-			Amount:   data.Amount,
+			FromUserID: sender.ID,
+			ToUserID:   receiver.ID,
+			Amount:     data.Amount,
 		}); err != nil {
 			return err
 		}
